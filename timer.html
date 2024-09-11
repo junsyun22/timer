@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>커스터마이즈 가능한 색상의 React 18 카운트다운 타이머 앱</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.21.2/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        body {
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+        }
+        .timer {
+            text-align: center;
+            padding: 40px;
+            background-color: #111;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.3);
+        }
+        .display {
+            font-size: 120px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(0, 191, 255, 0.7);
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        button, input {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            background-color: #222;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        input {
+            width: 100px;
+            text-align: center;
+            background-color: #222;
+        }
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #00bfff;
+        }
+        .current-time {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        .color-picker {
+            margin-top: 20px;
+        }
+        .color-picker input {
+            width: 100px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function CountdownTimerApp() {
+            const [time, setTime] = useState(0);
+            const [inputMinutes, setInputMinutes] = useState('');
+            const [isRunning, setIsRunning] = useState(false);
+            const [currentTime, setCurrentTime] = useState('');
+            const [color, setColor] = useState(() => {
+                return localStorage.getItem('timerColor') || '#00bfff';
+            });
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                document.body.style.setProperty('--main-color', color);
+                localStorage.setItem('timerColor', color);
+            }, [color]);
+
+            useEffect(() => {
+                let intervalId;
+                if (isRunning && time > 0) {
+                    intervalId = setInterval(() => {
+                        setTime(prevTime => prevTime - 1);
+                    }, 1000);
+                } else if (time === 0) {
+                    setIsRunning(false);
+                }
+                return () => clearInterval(intervalId);
+            }, [isRunning, time]);
+
+            useEffect(() => {
+                const timerId = setInterval(() => {
+                    const now = new Date();
+                    setCurrentTime(now.toLocaleTimeString());
+                }, 1000);
+                return () => clearInterval(timerId);
+            }, []);
+
+            const handleStart = () => {
+                if (inputMinutes !== '' && parseFloat(inputMinutes) > 0) {
+                    setTime(Math.floor(parseFloat(inputMinutes) * 60));
+                    setIsRunning(true);
+                    setInputMinutes('');
+                }
+            };
+
+            const handleStop = () => setIsRunning(false);
+            const handleReset = () => {
+                setIsRunning(false);
+                setTime(0);
+                setInputMinutes('');
+                inputRef.current.focus();
+            };
+
+            const handleInputChange = (e) => {
+                const value = e.target.value;
+                if (value === '' || (parseFloat(value) >= 0 && !isNaN(parseFloat(value)))) {
+                    setInputMinutes(value);
+                }
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter') {
+                    handleStart();
+                }
+            };
+
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            const handleColorChange = (e) => {
+                setColor(e.target.value);
+            };
+
+            return (
+                <div className="timer" style={{color: color, boxShadow: `0 0 20px ${color}30`}}>
+                    <div className="display" style={{textShadow: `0 0 10px ${color}70`}}>{formatTime(time)}</div>
+                    <div className="controls">
+                        <input 
+                            ref={inputRef}
+                            type="text" 
+                            value={inputMinutes}
+                            onChange={handleInputChange}
+                            onKeyPress={handleKeyPress}
+                            placeholder="분"
+                            disabled={isRunning}
+                            style={{color: color, boxShadow: `0 0 0 2px ${color}`}}
+                        />
+                        <button onClick={handleStart} disabled={isRunning || inputMinutes === ''} style={{color: color}}>▶</button>
+                        <button onClick={handleStop} disabled={!isRunning} style={{color: color}}>⏸</button>
+                        <button onClick={handleReset} style={{color: color}}>⟲</button>
+                    </div>
+                    <div className="current-time">{currentTime}</div>
+                    <div className="color-picker">
+                        <input type="color" value={color} onChange={handleColorChange} />
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CountdownTimerApp />);
+    </script>
+</body>
+</html>
